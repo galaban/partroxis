@@ -921,13 +921,12 @@ rooms = {}
 
 function auto_exit()
     if (show_partroxis_help == true and curr_room.id ~= 5763) then
-        -- if we're auto-hunting and we found the target, don't do that last "exits" call
         if (auto_hunt == true) then
             if(curr_room.id == target_room_id) then
                 auto_hunt_found_target()
-                return
             end
         end
+
         Execute("exits")
     end
 end
@@ -1103,6 +1102,7 @@ function auto_hunt_move(next_dir)
         if (next_dir == "to the void") then
             AnsiNote(c_white.."Patroxis Map Corrupted. Clearing cache.")
             rooms = {}
+--@RLA
             return
         end
 
