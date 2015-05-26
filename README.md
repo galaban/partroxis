@@ -18,3 +18,8 @@ partroxis help        -- this help screen
 partroxis guide       -- turn the guides on or off from within the maze
 partroxis return      -- return to the last explored room in the maze
 partroxis reset       -- reset the internal cache.
+
+
+INSTALL
+
+To add this to the MuschClient, just download the Galabans_Partroxis_Plugin.xml file and drop it into your Mushclient's "plugin" directory. Restart your MushClient and it will load.
