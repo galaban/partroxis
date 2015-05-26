@@ -770,10 +770,13 @@ function partroxis_room_entered()
     end
 
     -- we were in the maze (show_help = true) and now we're not.
-    -- The maze is 5763 to 5803.  5812 is the exit, though.
+    -- The maze is 5763 to 5803.  
+    -- 5812 is the exit. 5862/5813/5814 lead up to the maze
     -- Example:  Recall is 32418.  If we end up there, we will hit this
     if(curr_room.id < 5763 or curr_room.id > 5812) then
-        partroxis_maze_exited()
+        if (curr_room.id ~= 5862 and curr_room.id ~= 5813 and curr_room.id ~= 5814) then
+            partroxis_maze_exited()
+        end
         return
     end
 
@@ -913,7 +916,7 @@ end
 rooms = {}
 
 function auto_exit()
-    if (show_partroxis_help == true) then
+    if (show_partroxis_help == true and curr_room.id ~= 5763) then
         -- if we're auto-hunting and we found the target, don't do that last "exits" call
         if (auto_hunt == true) then
             if(curr_room.id == target_room_id) then
@@ -1094,9 +1097,8 @@ function auto_hunt_move(next_dir)
 
         -- This happens if we repop at the wrong time or if we try to move during the autohunt.
         if (next_dir == "to the void") then
-            AnsiNote(c_white.."Patroxis Map Corrupted. Clearing cache and continuing on.")
+            AnsiNote(c_white.."Patroxis Map Corrupted. Clearing cache.")
             rooms = {}
-            Execute("exits")
             return
         end
         -- not "ready" and not "running"? stop hunting
@@ -1216,9 +1218,10 @@ end
 --------------------
 function make_temporaries()
 
-    -- greeting yes/no response
-    AddAlias("tempPartroxisAlias1","yes","",alias_flag.Enabled + alias_flag.Temporary,"accept_partroxis_help")
-    AddAlias("tempPartroxisAlias2","no","",alias_flag.Enabled + alias_flag.Temporary,"decline_partroxis_help")
+    -- greeting accept/decline response (temporary)
+    -- NOte: we have to use accept/decline instead of yes/no because "no" is also "north"
+    AddAlias("tempPartroxisAlias1","accept","",alias_flag.Enabled + alias_flag.Temporary,"accept_partroxis_help")
+    AddAlias("tempPartroxisAlias2","decline","",alias_flag.Enabled + alias_flag.Temporary,"decline_partroxis_help")
 
 end
 
@@ -1244,11 +1247,16 @@ function greet()
 	local c_grey = ANSI(22)..ANSI(37)
 	local c_green = ANSI(1)..ANSI(32)
 
-    if(show_greeting == false or auto_hunt == true) then
+    if(show_greeting == false) then
         return
     end
     show_greeting = false
-
+    -- If they are auto-hunting, they'll never get the greeting.
+    -- They probably started at the beginning of the area and are blowing past this room
+    -- Also, they are probably familiar enough with the plugin to know the "guides" command
+    if (auto_hunt == true) then
+        return
+    end
     -- setup
     make_temporaries()
     if (show_partroxis_help == nil) then
@@ -1266,8 +1274,8 @@ function greet()
 
         AnsiNote("")
         AnsiNote(c_cyan.."Galaban says 'Greetings.  Would you like assistance through the maze?'")
-        AnsiNote(c_grey.."type '"..c_green.."yes"..c_grey.."' to ask for guides through the maze.")
-        AnsiNote(c_grey.."type '"..c_red.."no"..c_grey.."' to attempt without help.")
+        AnsiNote(c_grey.."type '"..c_green.."accept"..c_grey.."' to ask for guides through the maze.")
+        AnsiNote(c_grey.."type '"..c_red.."decline"..c_grey.."' to attempt without help.")
 		Execute("")
 
     end)
