@@ -25,7 +25,9 @@ A Partroxis maze assistant with auto-hunt and guides for walking through the maz
 <![CDATA[
 This is Galaban's Partroxis plugin.
 
-While in the Partroxis maze, it will show you the next exit to take. When a wrong direction is chosen, you can get a speedwalk back to the farthest room.
+While in the Partroxis maze, it will show you the next exit to take. 
+When a wrong direction is chosen, you can get a speedwalk back to the farthest room.
+Also, an autohunt feature allows you to go directly to a mob within the maze.
 ]]>
 </description>
 
@@ -386,8 +388,7 @@ function got_gmcp_room()
           correct_dir = "",
           next_id = -1,
           wrong_dir1 = "",
-          wrong_dir2 = "",
-          exits = {}
+          wrong_dir2 = ""
         }
         lastroom.exits.n = curr_room.exits.n
         lastroom.exits.e = curr_room.exits.e
@@ -506,7 +507,6 @@ function partroxis_reset_data()
         AnsiNote(c_grey.."Galaban whispers 'There's nothing to reset.'")
         return
     end
-    AnsiNote(c_grey.."Galaban whispers 'Did something go wrong? It was probably a shift in the Partroxis.'")
     AnsiNote(c_grey.."Galaban whispers 'I've reset everything the guides' memory. Sorry for the inconvenience.'")
     AnsiNote("")
     rooms = {}
@@ -564,10 +564,11 @@ Re-enter the area or use "partroxis guide" to turn the guides on.
 
 Commands available:
 
-partroxis help        -- this help screen
-partroxis guide       -- turn the guides on or off from within the maze
-partroxis return      -- return to the last explored room in the maze
-partroxis reset       -- reset the internal cache.
+partroxis help           -- this help screen
+partroxis autohunt <mob> -- run to the mob within the maze
+partroxis guide          -- Enable the maze guides
+partroxis return         -- return to the last explored room in the maze
+partroxis reset          -- reset the internal cache.
 ]]
 
 print(outstr)
@@ -691,6 +692,7 @@ end
 function show_partroxis_debug_data()
   AnsiNote("------------------------------------")
   AnsiNote("show guides: "..printbool(show_partroxis_help))
+  AnsiNote("auto-hunt: "..printbool(auto_hunt))
   AnsiNote("last_dir: ["..last_direction.."] ("..last_direction_prev..")")
   AnsiNote("rooms in cache: "..tablelength(rooms))
   if (lastroom == nil) then
@@ -837,6 +839,7 @@ end
 function partroxis_area_entered()
     show_greeting = true
     last_direction = ""
+    auto_hunt = false
     last_direction_prev = ""
     rooms = {}
 
@@ -853,6 +856,7 @@ function partroxis_maze_exited()
     --reset the plugin
     show_greeting = true
     show_partroxis_help = false
+    auto_hunt = false
     last_direction = ""
     rooms = {}
 
@@ -983,7 +987,6 @@ function store_last_move()
     -- Somehow got into a bad state.  Ignore this room.
     if (lastroom.id < 5763 or curr_room.id < 5763 or
         lastroom.id > 5803 or curr_room.id > 5803) then
-         -- return "true"
         return true
     end
 
@@ -1065,7 +1068,7 @@ function correct_exit()
         return
     end 
 
-    -- rooms with aggro mobs.  Have to use something else, since the mobs aren't there.
+    -- rooms with aggro mobs.  Have to use something else, since the mobs will be dead.
 	if (curr_room.id == 5784 or curr_room.id == 5798 or curr_room.id == 5799 or 
         curr_room.id == 5800 or curr_room.id == 5801) then
         this_mob_name = "Galaban"
@@ -1096,11 +1099,13 @@ function auto_hunt_move(next_dir)
         end
 
         -- This happens if we repop at the wrong time or if we try to move during the autohunt.
+        -- there might be some timing holes that cause this, as well
         if (next_dir == "to the void") then
             AnsiNote(c_white.."Patroxis Map Corrupted. Clearing cache.")
             rooms = {}
             return
         end
+
         -- not "ready" and not "running"? stop hunting
         if(player_state ~= 3) then
             if(player_state == 12) then
@@ -1144,27 +1149,27 @@ function find_partroxis_exit(nextexit)
     local out_string = ""
     if (curr_room.exits.n ~= nil and curr_room.exits.n == nextexit and
         curr_room.wrong_dir1 ~= "n" and curr_room.wrong_dir2 ~= "n") then
-        out_string = append_exit_dirs(out_string,"NORTH")
+        out_string = append_with_or(out_string,"NORTH")
     end
     if (curr_room.exits.e ~= nil and curr_room.exits.e == nextexit and
         curr_room.wrong_dir1 ~= "e" and curr_room.wrong_dir2 ~= "e") then
-        out_string = append_exit_dirs(out_string,"EAST")
+        out_string = append_with_or(out_string,"EAST")
     end
     if (curr_room.exits.s ~= nil and curr_room.exits.s == nextexit and
         curr_room.wrong_dir1 ~= "s" and curr_room.wrong_dir2 ~= "s") then
-        out_string = append_exit_dirs(out_string,"SOUTH")
+        out_string = append_with_or(out_string,"SOUTH")
     end
     if (curr_room.exits.w ~= nil and curr_room.exits.w == nextexit and
         curr_room.wrong_dir1 ~= "w" and curr_room.wrong_dir2 ~= "w") then
-        out_string = append_exit_dirs(out_string,"WEST")
+        out_string = append_with_or(out_string,"WEST")
     end
     if (curr_room.exits.u ~= nil and curr_room.exits.u == nextexit and
         curr_room.wrong_dir1 ~= "u" and curr_room.wrong_dir2 ~= "u") then
-        out_string = append_exit_dirs(out_string,"UP")
+        out_string = append_with_or(out_string,"UP")
     end
     if (curr_room.exits.d ~= nil and curr_room.exits.d == nextexit and
         curr_room.wrong_dir1 ~= "d" and curr_room.wrong_dir2 ~= "d") then
-        out_string = append_exit_dirs(out_string,"DOWN")
+        out_string = append_with_or(out_string,"DOWN")
     end
 
     if (out_string == "") then
@@ -1174,14 +1179,6 @@ function find_partroxis_exit(nextexit)
     PartroxisDebugNote("DEBUG:  found exits["..out_string.."]")
 
     return out_string
-end
-
-function append_exit_dirs(curr_str, new_string)
-    if (curr_str ~= "") then
-        curr_str = curr_str .. " or "
-    end
-    curr_str = curr_str .. new_string
-    return curr_str
 end
 
 function translate_exit_to_readable(short_dir)
@@ -1198,6 +1195,7 @@ function translate_exit_to_readable(short_dir)
     elseif (short_dir == "d") then
         return "DOWN"
     end
+    return ""
 end
 
 function flavor_exit(mob_name, next_dir)
@@ -1219,7 +1217,7 @@ end
 function make_temporaries()
 
     -- greeting accept/decline response (temporary)
-    -- NOte: we have to use accept/decline instead of yes/no because "no" is also "north"
+    -- Note: we have to use accept/decline instead of yes/no because "no" is also "north"
     AddAlias("tempPartroxisAlias1","accept","",alias_flag.Enabled + alias_flag.Temporary,"accept_partroxis_help")
     AddAlias("tempPartroxisAlias2","decline","",alias_flag.Enabled + alias_flag.Temporary,"decline_partroxis_help")
 
@@ -1251,6 +1249,7 @@ function greet()
         return
     end
     show_greeting = false
+
     -- If they are auto-hunting, they'll never get the greeting.
     -- They probably started at the beginning of the area and are blowing past this room
     -- Also, they are probably familiar enough with the plugin to know the "guides" command
@@ -1303,9 +1302,6 @@ function accept_partroxis_help()
         AnsiNote(c_cyan.."Galaban says 'I'm glad to hear that.  My helpers will show you the way.'")
         AnsiNote(c_cyan.."Galaban says 'Sometimes they don't know the exact direction.'")
         AnsiNote(c_cyan.."Galaban says 'But do not fear.  They won't send you the wrong direction twice.'")
-
-        wait.time(0.2)
-        AnsiNote("")
         AnsiNote(c_grey.."Galaban reaches into his pockets and throws lua dust over the maze.")
         AnsiNote(c_cyan.."Galaban says 'The first room is north.'")
 		Execute("open north")
@@ -1427,6 +1423,15 @@ function PartroxisDebugNote(text)
         Note(text)
     end
 end
+
+function append_with_or(curr_str, new_string)
+    if (curr_str ~= "") then
+        curr_str = curr_str .. " or "
+    end
+    curr_str = curr_str .. new_string
+    return curr_str
+end
+
 
 ]]>
 </script>
