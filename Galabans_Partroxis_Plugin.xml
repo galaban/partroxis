@@ -229,6 +229,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    enabled="n"
    group="partroxis_exit_triggers"
    match="Obvious exits from [*"
+   name="PartroxisExitTrigger1"
    send_to="12"
    sequence="100"
   >
@@ -243,6 +244,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    expand_variables="y"
    group="partroxis_exit_triggers"
    match="^ North          \: (.*?)$"
+   name="PartroxisExitTrigger2"
    regexp="y"
    send_to="12"
    sequence="100"
@@ -259,6 +261,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    expand_variables="y"
    group="partroxis_exit_triggers"
    match="^ East           \: (.*?)$"
+   name="PartroxisExitTrigger3"
    regexp="y"
    send_to="12"
    sequence="100"
@@ -275,6 +278,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    expand_variables="y"
    group="partroxis_exit_triggers"
    match="^ South          \: (.*?)$"
+   name="PartroxisExitTrigger4"
    regexp="y"
    send_to="12"
    sequence="100"
@@ -291,6 +295,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    expand_variables="y"
    group="partroxis_exit_triggers"
    match="^ West           \: (.*?)$"
+   name="PartroxisExitTrigger5"
    regexp="y"
    send_to="12"
    sequence="100"
@@ -307,6 +312,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    expand_variables="y"
    group="partroxis_exit_triggers"
    match="^ Up             \: (.*?)$"
+   name="PartroxisExitTrigger6"
    regexp="y"
    send_to="12"
    sequence="100"
@@ -323,6 +329,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    expand_variables="y"
    group="partroxis_exit_triggers"
    match="^ Down           \: (.*?)$"
+   name="PartroxisExitTrigger7"
    regexp="y"
    send_to="12"
    sequence="100"
@@ -434,6 +441,7 @@ function partroxis_mob_hunt(rName, rLine, rWildcards)
 
     local regx = "^(?<mob>.{30}) (?<room>.+)$"
 
+    -- one-shot "where" triggers
     AddTriggerEx("tempTrgMapFindTrigger1", regx, "",  
          trigger_flag.Enabled + trigger_flag.OneShot + trigger_flag.RegularExpression, 
          -1, 0, "", "partroxis_where_match", sendto.script, 100)
@@ -451,7 +459,7 @@ function partroxis_mob_stophunt()
 	local c_grey = ANSI(22)..ANSI(37)
 
     if(auto_hunt) then
-        auto_hunt = false
+        auto_hunt_set_off()
         Note("Turning off Auto-hunt")
     else
         AnsiNote(c_grey.."To auto-hunt a mob in the partroxis maze use: "..c_green.."partroxis autohunt mob")
@@ -491,6 +499,8 @@ function partroxis_return()
         end
         return
     end
+
+    auto_exit_set_triggers()
     runstr = runstr..";exits"
     isrunning = true
     Execute (runstr)
@@ -628,7 +638,7 @@ function partroxis_where_match(rName, rLine, rWildcards)
         return
     end
 
-    auto_hunt = true
+    auto_hunt_set_on()
     enable_partroxis_guides(true)
 
     Note("Target Room ID: ".. target_room_id)
@@ -839,7 +849,7 @@ end
 function partroxis_area_entered()
     show_greeting = true
     last_direction = ""
-    auto_hunt = false
+    auto_hunt_set_off()
     last_direction_prev = ""
     rooms = {}
 
@@ -856,7 +866,7 @@ function partroxis_maze_exited()
     --reset the plugin
     show_greeting = true
     show_partroxis_help = false
-    auto_hunt = false
+    auto_hunt_set_off()
     last_direction = ""
     rooms = {}
 
@@ -926,14 +936,35 @@ function auto_exit()
                 auto_hunt_found_target()
             end
         end
-
+        auto_exit_set_triggers()
         Execute("exits")
     end
+end
+
+function auto_exit_set_triggers()
+    SetTriggerOption("PartroxisExitTrigger1","omit_from_output","y")
+    SetTriggerOption("PartroxisExitTrigger2","omit_from_output","y")
+    SetTriggerOption("PartroxisExitTrigger3","omit_from_output","y")
+    SetTriggerOption("PartroxisExitTrigger4","omit_from_output","y")
+    SetTriggerOption("PartroxisExitTrigger5","omit_from_output","y")
+    SetTriggerOption("PartroxisExitTrigger6","omit_from_output","y")
+    SetTriggerOption("PartroxisExitTrigger7","omit_from_output","y")
+end
+
+function auto_exit_clear_triggers()
+    SetTriggerOption("PartroxisExitTrigger1","omit_from_output","n")
+    SetTriggerOption("PartroxisExitTrigger2","omit_from_output","n")
+    SetTriggerOption("PartroxisExitTrigger3","omit_from_output","n")
+    SetTriggerOption("PartroxisExitTrigger4","omit_from_output","n")
+    SetTriggerOption("PartroxisExitTrigger5","omit_from_output","n")
+    SetTriggerOption("PartroxisExitTrigger6","omit_from_output","n")
+    SetTriggerOption("PartroxisExitTrigger7","omit_from_output","n")
 end
 
 function partroxis_exit_complete()
    -- If we got an "exits" message, we know we're not running
    isrunning = false
+   auto_exit_clear_triggers()
 
    if(auto_hunt == true) then
        -- store the last move we made and go make the next move.
@@ -1102,7 +1133,6 @@ function auto_hunt_move(next_dir)
         if (next_dir == "to the void") then
             AnsiNote(c_white.."Patroxis Map Corrupted. Clearing cache.")
             rooms = {}
---@RLA
             return
         end
 
@@ -1111,7 +1141,7 @@ function auto_hunt_move(next_dir)
             if(player_state == 12) then
                 return
             end
-            auto_hunt = false
+            auto_hunt_set_off()
             Note("Turning off autohunt.")
             PartroxisDebugNote("PlayerState = "..player_state)
             return
@@ -1131,13 +1161,21 @@ function auto_hunt_move(next_dir)
 end
 
 function auto_hunt_found_target()
-    auto_hunt = false
+    auto_hunt_set_off()
 
     wait.make (function()
         wait.time(0.1)
         AnsiNote(full_target_name.." is here")
         AnsiNote("")
     end)
+end
+
+function auto_hunt_set_on()
+    auto_hunt = true
+end
+
+function auto_hunt_set_off()
+    auto_hunt = false
 end
 
 
