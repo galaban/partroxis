@@ -14,11 +14,15 @@ Re-enter the area or use "partroxis guide" to turn the guides on.
 
 Commands available:
 
-partroxis help        -- this help screen
-partroxis guide       -- turn the guides on or off from within the maze
-partroxis return      -- return to the last explored room in the maze
-partroxis reset       -- reset the internal cache.
+partroxis help           -- this help screen
 
+partroxis autohunt <mob> -- run to the mob within the maze
+
+partroxis guide          -- Enable the maze guides
+
+partroxis return         -- return to the last explored room in the maze
+
+partroxis reset          -- reset the internal cache.
 
 INSTALL
 
