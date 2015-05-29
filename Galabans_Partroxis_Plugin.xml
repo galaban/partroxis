@@ -60,6 +60,13 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
 </alias>
 
 <alias
+   match="partroxis listdata"
+   enabled="y"
+   script="partroxis_list_data"
+   sequence="100">
+</alias>
+
+<alias
    match="partroxis guide"
    enabled="y"
    script="partroxis_alias_guides"
@@ -77,6 +84,31 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    match="partroxis autohunt"
    enabled="y"
    script="partroxis_mob_stophunt"
+   sequence="100">
+</alias>
+
+<alias
+   match="partroxis runto *"
+   enabled="y"
+   send_to="12"
+   sequence="100">
+  <send>
+     partroxis_room_hunt("%1")
+  </send>
+</alias>
+
+<alias
+   match="partroxis runto"
+   enabled="y"
+   script="partroxis_room_stophunt"
+   sequence="100">
+</alias>
+
+
+<alias
+   match="partroxis off"
+   enabled="y"
+   script="partroxis_off"
    sequence="100">
 </alias>
 
@@ -466,6 +498,56 @@ function partroxis_mob_stophunt()
     end
 end
 
+function partroxis_room_stophunt()
+	local c_green = ANSI(1)..ANSI(32)
+	local c_grey = ANSI(22)..ANSI(37)
+
+    if(auto_hunt) then
+        auto_hunt_set_off()
+        Note("Turning off runto")
+    else
+        AnsiNote(c_grey.."To runto a room in the partroxis maze use: "..c_green.."partroxis runto roomid")
+    end
+end
+
+function partroxis_room_hunt(inval)
+	local c_grey = ANSI(22)..ANSI(37)
+
+    if (curr_room == nil or curr_room.id < 5763 or curr_room.id > 5862) then
+        AnsiNote(c_grey.."Galaban whispers 'You need to be in the maze to do that.'")   
+        return
+    end
+    
+    local room_num = tonumber(inval)
+    if (room_num == nil) then
+        AnsiNote(c_grey.."Galaban whispers 'To run to a room id, use '"..c_green.."partroxis runto <roomid>"..c_grey.."'")   
+        return
+    end
+
+    if(room_num <= 5763 or room_num > 5803) then
+        AnsiNote(c_grey.."Galaban whispers 'The room you're trying to runto is outside of the maze.'")   
+        AnsiNote(c_grey.."Galaban whispers 'Try a number between 5763 and 5803.'")   
+        return
+    end
+
+    if (room_mob_list == nil) then
+        initialize()
+    end
+
+    local lookup = room_mob_list[room_num]
+    if (lookup == nil) then
+        AnsiNote(c_grey.."Galaban whispers 'I can't seem to find that room, oddly.'")   
+        return
+    end
+
+    full_target_name = lookup.mob
+    target_room = lookup.name
+    target_room_id = room_num
+
+    partroxis_start_autohunt()
+end
+
+
 isrunning = false;
 function partroxis_return()
 	local c_grey = ANSI(22)..ANSI(37)
@@ -555,6 +637,24 @@ function partroxis_alias_guides()
 
 end
 
+function partroxis_off()
+	local c_grey = ANSI(22)..ANSI(37)
+
+    -- KILL SWITCH. BOOM!
+    AnsiNote(c_grey.."Partroxis plugin disabled")
+
+    -- autohunt
+    partroxis_mob_stophunt()
+
+    -- guides
+    enable_partroxis_guides(false)    
+    
+    -- debug
+    partroxis_debug = false
+    EnableAliasGroup("partroxis_debug_aliases", false)
+
+end
+
 function partroxis_show_help()
 
     local outstr = [[
@@ -576,9 +676,13 @@ Commands available:
 
 partroxis help           -- this help screen
 partroxis autohunt <mob> -- run to the mob within the maze
+partroxis runto <room #> -- run to the room number within the maze
 partroxis guide          -- Enable the maze guides
 partroxis return         -- return to the last explored room in the maze
+
+partroxis listdata       -- print out a list of the room/mob data
 partroxis reset          -- reset the internal cache.
+partroxis off            -- blanket disable for all plugin functionality
 ]]
 
 print(outstr)
@@ -638,6 +742,12 @@ function partroxis_where_match(rName, rLine, rWildcards)
         return
     end
 
+    partroxis_start_autohunt()
+
+end
+
+function partroxis_start_autohunt()
+    -- We must have:  target_room_id, target_room, and target_mob set before coming here.
     auto_hunt_set_on()
     enable_partroxis_guides(true)
 
@@ -659,7 +769,6 @@ function partroxis_where_match(rName, rLine, rWildcards)
     else
         Execute("look")
     end
-
 end
 
 
@@ -1070,7 +1179,13 @@ function correct_exit()
         return
     end
 
-    local next_room = room_mob_list[curr_room.id + 1]
+    local next_room = nil
+    if (curr_room.id == 5803) then
+        next_room = room_mob_list[5812]
+    else
+        next_room = room_mob_list[curr_room.id + 1]
+    end
+
     if (next_room == nil) then
 	    AnsiNote("I couldn't find the next room  (room: "..(curr_room.id+1)..")")
         return
@@ -1091,6 +1206,7 @@ function correct_exit()
         return
     elseif (curr_room.id == 5792) then
         guide_player("Soul of the Damned","ENTER GATE")
+		last_direction = "enter gate"
         return
     elseif (curr_room.id == 5803) then
         guide_player("Chitryn","ENTER GATE")
@@ -1325,6 +1441,11 @@ function enable_partroxis_guides(enabled)
     show_partroxis_help = enabled
     EnableTriggerGroup("partroxis_exit_triggers",enabled)
     EnableAliasGroup("partroxis_movement",enabled)
+
+    -- should not be a problem, jsut make sure
+    if( enabled == false) then
+        DoAfterSpecial(0.5,"clear_greetings_alias()", sendto.script)
+    end
 end
 
 function accept_partroxis_help()
@@ -1386,6 +1507,30 @@ end
 -----------------
 -- Partroxis Data
 -----------------
+function partroxis_list_data()
+    if (room_mob_list == nil) then
+        initialize()
+    end
+
+    local ordered_keys = {}
+    for k in pairs(room_mob_list) do
+        table.insert(ordered_keys, k)
+    end
+    table.sort(ordered_keys)
+
+
+    AnsiNote("-----------------------------------------------------------------")
+    AnsiNote("Room# "..padright("Mob Name", 40).."  Room name")
+
+    --for i,item in pairs(room_mob_list) do
+
+    for i = 1, #ordered_keys do
+        local item = room_mob_list[ordered_keys[i]]
+        AnsiNote(ordered_keys[i].."  "..padright(item.mob,40).. "  "..item.name)
+    end
+    AnsiNote("-----------------------------------------------------------------")
+end
+
 room_mob_list = nil
 function initialize()
     room_mob_list = {}
@@ -1468,6 +1613,19 @@ function append_with_or(curr_str, new_string)
     end
     curr_str = curr_str .. new_string
     return curr_str
+end
+
+function padright(instr,tolength)
+    local strlen = string.len(instr)
+    if (strlen > tolength) then
+        return instr
+    end
+    strlen = tolength - strlen
+    while strlen > 0 do
+        instr = instr.." "
+        strlen = strlen - 1
+    end
+    return instr
 end
 
 
