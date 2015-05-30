@@ -282,6 +282,9 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    sequence="100"
   >
   <send>
+     if ("%1" == "Too dark to see.") then
+        partroxis_needs_nightvision()
+     end
      if(curr_room ~= nil) then
          curr_room.exits.n = Trim("%1")
      end
@@ -299,6 +302,9 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    sequence="100"
   >
   <send>
+     if ("%1" == "Too dark to see.") then
+        partroxis_needs_nightvision()
+     end
      if(curr_room ~= nil) then
          curr_room.exits.e = Trim("%1")
      end
@@ -316,6 +322,9 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    sequence="100"
   >
   <send>
+     if ("%1" == "Too dark to see.") then
+        partroxis_needs_nightvision()
+     end
      if(curr_room ~= nil) then
          curr_room.exits.s = Trim("%1")
      end
@@ -333,6 +342,9 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    sequence="100"
   >
   <send>
+     if ("%1" == "Too dark to see.") then
+        partroxis_needs_nightvision()
+     end
      if(curr_room ~= nil) then
          curr_room.exits.w = Trim("%1")
      end
@@ -350,6 +362,9 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    sequence="100"
   >
   <send>
+     if ("%1" == "Too dark to see.") then
+        partroxis_needs_nightvision()
+     end
      if(curr_room ~= nil) then
          curr_room.exits.u = Trim("%1")
      end
@@ -367,11 +382,17 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
    sequence="100"
   >
   <send>
+     if ("%1" == "Too dark to see.") then
+        partroxis_needs_nightvision()
+     end
      if(curr_room ~= nil) then
          curr_room.exits.d = Trim("%1")
      end
   </send>
   </trigger>
+
+
+
 
 </triggers>
 
@@ -402,7 +423,7 @@ function OnPluginBroadcast (msg, id, name, text)
          luastmt = "gmcpdata = " .. gmcparg
          assert (loadstring (luastmt or "")) ()
 
-         got_gmcp_room()         
+         got_gmcp_room()
       end 
 
       if (text == "char.status") then
@@ -418,16 +439,17 @@ end
 function got_gmcp_room()
     local room_id = gmcpval("num")
 
-    PartroxisDebugNote("Room Number: "..room_id)
-
     if (curr_room ~= nil) then
         lastroom = {
-          id = curr_room.id,
-          exits = {},
-          correct_dir = "",
-          next_id = -1,
-          wrong_dir1 = "",
-          wrong_dir2 = ""
+            id = curr_room.id,
+            exits = {},
+            correct_dir = "",
+            next_id = -1,
+            wrong_dir1 = "",  -- these are set after the fact
+            wrong_dir2 = "",
+            temp_wrong_dir1 = "",  -- these are only set by "scan"
+            temp_wrong_dir2 = "",
+            pet = curr_room.pet
         }
         lastroom.exits.n = curr_room.exits.n
         lastroom.exits.e = curr_room.exits.e
@@ -437,15 +459,18 @@ function got_gmcp_room()
         lastroom.exits.d = curr_room.exits.d
     end
     curr_room = {
-      id = tonumber(room_id),
-      exits = {},
-      correct_dir = "",
-      next_id = -1,
-      wrong_dir1 = "",
-      wrong_dir2 = ""
+        id = tonumber(room_id),
+        exits = {},
+        correct_dir = "",
+        next_id = -1,
+        wrong_dir1 = "",
+        wrong_dir2 = "",
+        temp_wrong_dir1 = "",
+        temp_wrong_dir2 = "",
+        pet = ""
     }
     
-	partroxis_room_entered()
+    partroxis_room_entered()
 end
 
 function reset_curr_room_exits()
@@ -464,7 +489,7 @@ end
 -- Alias Handlers
 -----------------
 function partroxis_mob_hunt(rName, rLine, rWildcards)
-	local c_grey = ANSI(22)..ANSI(37)
+    local c_grey = ANSI(22)..ANSI(37)
 
     if (curr_room == nil or curr_room.id < 5763 or curr_room.id > 5862) then
         AnsiNote(c_grey.."Galaban whispers 'It looks like you're not in the maze.'")   
@@ -487,8 +512,8 @@ function partroxis_mob_hunt(rName, rLine, rWildcards)
 end
 
 function partroxis_mob_stophunt()
-	local c_green = ANSI(1)..ANSI(32)
-	local c_grey = ANSI(22)..ANSI(37)
+    local c_green = ANSI(1)..ANSI(32)
+    local c_grey = ANSI(22)..ANSI(37)
 
     if(auto_hunt) then
         auto_hunt_set_off()
@@ -499,8 +524,8 @@ function partroxis_mob_stophunt()
 end
 
 function partroxis_room_stophunt()
-	local c_green = ANSI(1)..ANSI(32)
-	local c_grey = ANSI(22)..ANSI(37)
+    local c_green = ANSI(1)..ANSI(32)
+    local c_grey = ANSI(22)..ANSI(37)
 
     if(auto_hunt) then
         auto_hunt_set_off()
@@ -511,7 +536,7 @@ function partroxis_room_stophunt()
 end
 
 function partroxis_room_hunt(inval)
-	local c_grey = ANSI(22)..ANSI(37)
+    local c_grey = ANSI(22)..ANSI(37)
 
     if (curr_room == nil or curr_room.id < 5763 or curr_room.id > 5862) then
         AnsiNote(c_grey.."Galaban whispers 'You need to be in the maze to do that.'")   
@@ -549,8 +574,9 @@ end
 
 
 isrunning = false;
+
 function partroxis_return()
-	local c_grey = ANSI(22)..ANSI(37)
+    local c_grey = ANSI(22)..ANSI(37)
 
     if (curr_room == nil or curr_room.id < 5763 or curr_room.id > 5812) then
         AnsiNote(c_grey.."Galaban whispers 'It looks like you're not in the maze.'")   
@@ -577,7 +603,7 @@ function partroxis_return()
         if (auto_hunt == false) then
             local c_grey = ANSI(22)..ANSI(37)
             AnsiNote(c_grey.."Galaban whispers 'The maze has reset since you were last here. Just follow the guide.'")
-            correct_exit()
+            execute_correct_exit()
         end
         return
     end
@@ -589,7 +615,7 @@ function partroxis_return()
 end
 
 function partroxis_reset_data()
-	local c_grey = ANSI(22)..ANSI(37)
+    local c_grey = ANSI(22)..ANSI(37)
 
     if (curr_room == nil or curr_room.id < 5763 or curr_room.id > 5812) then
         AnsiNote(c_grey.."Galaban whispers 'It looks like you're not in the maze.'")   
@@ -605,10 +631,10 @@ function partroxis_reset_data()
 end
 
 function partroxis_alias_guides()
-	local c_cyan = ANSI(1)..ANSI(36)
-	local c_red = ANSI(1)..ANSI(31)
-	local c_grey = ANSI(22)..ANSI(37)
-	local c_green = ANSI(1)..ANSI(32)
+    local c_cyan = ANSI(1)..ANSI(36)
+    local c_red = ANSI(1)..ANSI(31)
+    local c_grey = ANSI(22)..ANSI(37)
+    local c_green = ANSI(1)..ANSI(32)
 
     if (curr_room == nil or curr_room.id < 5763 or curr_room.id > 5812) then
         AnsiNote(c_grey.."Galaban whispers 'It looks like you're not in the maze.'")   
@@ -622,7 +648,7 @@ function partroxis_alias_guides()
            AnsiNote(c_grey.."Galaban whispers 'Be aware that they haven't been paying attention so far.'")
            AnsiNote(c_grey.."Galaban whispers 'So they will not know all the directions that you've already tried.'")
         end
-		Execute("")
+        Execute("")
         enable_partroxis_guides(true)
     else
         AnsiNote("")
@@ -631,14 +657,14 @@ function partroxis_alias_guides()
            AnsiNote(c_grey.."Galaban whispers 'Be aware that they will no longer pay attention to your movements.'")
            AnsiNote(c_grey.."Galaban whispers 'So they will not remember all your paths from here on out.'")
         end
-		Execute("")
+        Execute("")
         enable_partroxis_guides(false)
     end
 
 end
 
 function partroxis_off()
-	local c_grey = ANSI(22)..ANSI(37)
+    local c_grey = ANSI(22)..ANSI(37)
 
     -- KILL SWITCH. BOOM!
     AnsiNote(c_grey.."Partroxis plugin disabled")
@@ -658,7 +684,6 @@ end
 function partroxis_show_help()
 
     local outstr = [[
-
 Galaban's Partroxis Plugin
 
 This plugin provides "guides" through the Partroxis maze.  When you enter a
@@ -682,93 +707,15 @@ partroxis return         -- return to the last explored room in the maze
 
 partroxis listdata       -- print out a list of the room/mob data
 partroxis reset          -- reset the internal cache.
-partroxis off            -- blanket disable for all plugin functionality
-]]
+partroxis off            -- blanket disable for all plugin functionality]]
 
-print(outstr)
+    print(outstr)
 
     if (curr_room == nil or curr_room.id < 5763 or curr_room.id > 5812) then
         print("The plugin will feel like part of the area. Head to the Otherworld to see")
         print("for yourself.")
     end
 
-end
-
--------------------
---  Auto-hunt stuff
--------------------
-auto_hunt = false
-full_target_name = ""
-target_room = ""
-target_room_id = -1
-
-function partroxis_where_nomatch(rName, rLine, rWildcards)
-    -- Remove the "found" trigger
-    DeleteTrigger("tempTrgMapFindTrigger1")
-    AnsiNote("Mob Not Found.  Try again.")
-end
-
-function partroxis_where_match(rName, rLine, rWildcards)
-    -- Remove the "not found" trigger
-    DeleteTrigger("tempTrgMapFindTrigger2")
-
-    -- 
-    target_room = Trim(rWildcards.room)
-    full_target_name = Trim(rWildcards.mob)
-
-    if (room_mob_list == nil) then
-        initialize()
-    end
-
-    -- Find the target mob in the list and get the room id
-    target_room_id = -1
-    for i,item in pairs(room_mob_list) do
-        --Note("Comparing ["..item.name.."] to ["..target_room.."]")
-
-        if(item.name == target_room) then
-            if (string.lower(item.mob) == string.lower(full_target_name)) then
-                target_room_id = i
-                break
-            elseif (string.len(item.mob) >= 28 and
-                    string.startswith(item.mob, full_target_name)) then
-                target_room_id = i
-                break
-            end
-        end
-    end
-
-    if (target_room_id == -1) then
-        Note("Mob-room combination not found.")
-        return
-    end
-
-    partroxis_start_autohunt()
-
-end
-
-function partroxis_start_autohunt()
-    -- We must have:  target_room_id, target_room, and target_mob set before coming here.
-    auto_hunt_set_on()
-    enable_partroxis_guides(true)
-
-    Note("Target Room ID: ".. target_room_id)
-
-    -- get us to the maze... once we're there, the auto-hunt takes over.
-    if (curr_room.id == 5862) then
-        Execute("enter partroxis;enter partroxis;enter other;open n;n")
-        return
-    elseif (curr_room.id == 5814) then
-        Execute("enter partroxis;enter other;open n;n")
-        return
-    elseif (curr_room.id == 5813) then
-        Execute("enter other;open n;n")
-        return
-    elseif (curr_room.id == 5763) then
-        Execute("open n;n")
-        return
-    else
-        Execute("look")
-    end
 end
 
 
@@ -809,34 +756,44 @@ function show_partroxis_exits()
 end
 
 function show_partroxis_debug_data()
-  AnsiNote("------------------------------------")
-  AnsiNote("show guides: "..printbool(show_partroxis_help))
-  AnsiNote("auto-hunt: "..printbool(auto_hunt))
-  AnsiNote("last_dir: ["..last_direction.."] ("..last_direction_prev..")")
-  AnsiNote("rooms in cache: "..tablelength(rooms))
-  if (lastroom == nil) then
-      AnsiNote("last room: nil")
-  else
-      AnsiNote("last room: "..lastroom.id)
-      if (rooms[lastroom.id] == nil) then
+
+    local pos_exit = ""
+    if (possible_valid_exits ~= nil) then
+        for i,k in pairs(possible_valid_exits) do
+            pos_exit = pos_exit.." "..k
+        end
+    else
+        pos_exit = "nil"
+    end
+    AnsiNote("------------------------------------")
+    AnsiNote("show guides: "..printbool(show_partroxis_help))
+    AnsiNote("auto-hunt: "..printbool(auto_hunt))
+    AnsiNote("possible exits: "..pos_exit)
+    AnsiNote("last_dir: ["..last_direction.."] ("..last_direction_prev..")")
+    AnsiNote("rooms in cache: "..tablelength(rooms))
+    if (lastroom == nil) then
+        AnsiNote("last room: nil")
+    else
+        AnsiNote("last room: "..lastroom.id)
+        if (rooms[lastroom.id] == nil) then
           AnsiNote("last room not in cache")
-      end
-      AnsiNote("last room dir: " .. lastroom.correct_dir .. "  leads to " .. lastroom.next_id)
-      AnsiNote("last room wrong dir1: " .. lastroom.wrong_dir1 .. "   wrong dir2: " .. lastroom.wrong_dir2)
-
-  end
-
-  if (curr_room~= nil) then
-  	AnsiNote("current room: "..curr_room.id)
-      if (rooms[curr_room.id] == nil) then
+        end
+        AnsiNote("last room dir: " .. lastroom.correct_dir .. "  leads to " .. lastroom.next_id)
+        AnsiNote("last room wrong dir1: " .. lastroom.wrong_dir1 .. "   wrong dir2: " .. lastroom.wrong_dir2)
+    
+    end
+    
+    if (curr_room~= nil) then
+        AnsiNote("current room: "..curr_room.id)
+        if (rooms[curr_room.id] == nil) then
           AnsiNote("current room not in cache")
-      end
-      AnsiNote("current room correct dir: " .. curr_room.correct_dir .. "  leads to " .. curr_room.next_id)
-      AnsiNote("current room wrong dir1: " .. curr_room.wrong_dir1 .. "   wrong dir2: " .. curr_room.wrong_dir2)
-  end
-
-  AnsiNote("------------------------------------")
-  show_partroxis_exits()
+        end
+        AnsiNote("current room correct dir: " .. curr_room.correct_dir .. "  leads to " .. curr_room.next_id)
+        AnsiNote("current room wrong dir1: " .. curr_room.wrong_dir1 .. "   wrong dir2: " .. curr_room.wrong_dir2)
+    end
+    
+    AnsiNote("------------------------------------")
+    show_partroxis_exits()
 
 end
 
@@ -849,12 +806,384 @@ function show_partroxis_debug_printmap()
     AnsiNote("  ID    Good Exit     Bad Exits ")
 
     for i,iroom in pairs(rooms) do
-        AnsiNote(iroom.id .."    "..iroom.correct_dir.." to "..iroom.next_id.."     wrong1["..iroom.wrong_dir1.."]  wrong2["..iroom.wrong_dir2.."]")
+        AnsiNote(iroom.id .."    "..iroom.correct_dir.." to "..iroom.next_id..
+            "     wrong1["..iroom.wrong_dir1.."]  wrong2["..iroom.wrong_dir2.."]   pet["..iroom.pet.."]")
     end
 
     AnsiNote("------------------------------------")
 
 end
+
+
+-------------------
+--  Auto-hunt stuff
+-------------------
+auto_hunt = false
+full_target_name = ""
+target_room = ""
+target_room_id = -1
+
+
+-- [AutoHunt] (Trigger callback)
+-- Called when we have a "where <mob>" call that did find a mob
+function partroxis_where_nomatch(rName, rLine, rWildcards)
+    -- Remove the "found" trigger
+    DeleteTrigger("tempTrgMapFindTrigger1")
+    AnsiNote("Mob Not Found.  Try again.")
+end
+
+
+-- [AutoHunt] (Trigger callback)
+-- Called when we have a "where <mob>" call that matched
+function partroxis_where_match(rName, rLine, rWildcards)
+    -- Remove the "not found" trigger
+    DeleteTrigger("tempTrgMapFindTrigger2")
+
+    -- 
+    target_room = Trim(rWildcards.room)
+    full_target_name = Trim(rWildcards.mob)
+
+    if (room_mob_list == nil) then
+        initialize()
+    end
+
+    -- Find the target mob in the list and get the room id
+    target_room_id = -1
+    for i,item in pairs(room_mob_list) do
+        --Note("Comparing ["..item.name.."] to ["..target_room.."]")
+
+        if(item.name == target_room) then
+            if (string.lower(item.mob) == string.lower(full_target_name)) then
+                target_room_id = i
+                break
+            elseif (string.len(item.mob) >= 28 and
+                    string.startswith(item.mob, full_target_name)) then
+                target_room_id = i
+                break
+            end
+        end
+    end
+
+    if (target_room_id == -1) then
+        Note("Mob-room combination not found.")
+        return
+    end
+
+    partroxis_start_autohunt()
+
+end
+
+
+-- Initiates the auto-movement towards a target (autohunt/runto)
+-- REQUIRES:  target_room_id, target_room, and target_mob to be set
+function partroxis_start_autohunt()
+
+    auto_hunt_set_on()
+    enable_partroxis_guides(true)
+
+    Note("Target Room ID: ".. target_room_id)
+
+    -- get us to the maze... once we're there, the auto-hunt takes over.
+    if (curr_room.id == 5862) then
+        Execute("enter partroxis;enter partroxis;enter other;open n;n")
+        return
+    elseif (curr_room.id == 5814) then
+        Execute("enter partroxis;enter other;open n;n")
+        return
+    elseif (curr_room.id == 5813) then
+        Execute("enter other;open n;n")
+        return
+    elseif (curr_room.id == 5763) then
+        Execute("open n;n")
+        return
+    else
+        Execute("look")
+    end
+end
+
+-------------------
+--  Auto-scan stuff
+-------------------
+
+-- [Look evaluation]
+-- Add triggers to see if there is a pet in this room
+function check_room_for_pet()
+
+    -- These rooms are the "false exits" for later rooms.  Check them for pets
+    if (curr_room.id == 5766 or curr_room.id == 5769  or curr_room.id == 5772
+        or curr_room.id == 5773  or curr_room.id == 5774 or curr_room.id == 5775
+        or curr_room.id == 5779  or curr_room.id == 5788 or curr_room.id == 5797) then
+
+        PartroxisDebugNote("Looking for pet...")
+
+    else 
+        return
+    end
+
+    AddTriggerEx("tempTrgPartroxPetCheck1", "(Charmed) *", "",  
+         trigger_flag.Enabled + trigger_flag.OneShot, 
+         -1, 0, "", "partroxis_pet_match_here", sendto.script, 100)
+
+    AddTriggerEx("tempTrgPartroxPetCheck2", ".-.1", "",  
+         trigger_flag.Enabled + trigger_flag.OneShot + trigger_flag.OmitFromOutput, 
+         -1, 0, "", "partroxis_pet_match_complete", sendto.script, 100)
+
+    -- just something unique to trigger the fact that we've looked through all the mobs in the room.
+    Execute("echo .-.1")
+
+end
+
+-- [Look evaluation]
+-- Trigger callback: "look" matched a pet in this room
+function partroxis_pet_match_here(rName, rLine, rWildcards)
+
+    curr_room.pet = rWildcards[1]
+
+    PartroxisDebugNote("Pet Found.  Saving to room map.")
+
+end
+
+-- [Look evaluation]
+-- Trigger callback: "look" completed looking for a pet
+function partroxis_pet_match_complete(rName, rLine, rWildcards)
+
+    -- Delete this so it doesn't fire later
+    DeleteTrigger("tempTrgPartroxPetCheck1")
+
+end
+
+
+-- (Bool) Returns whether we should perform the scanning for the pets
+function should_scan_for_pet()
+
+    -- Room X leads to false-exit Y  If they have a pet in those bad rooms (Y),
+    -- let's go ahead and scan for it.
+
+    local false_exit = get_false_exit_room_id(curr_room.id)
+    if (false_exit == -1) then
+        return false 
+    end
+
+    if (rooms[false_exit] ~= nil and rooms[false_exit].pet ~= "") then
+        PartroxisDebugNote("Should scan for pet: yes")
+
+        return true
+    end
+    PartroxisDebugNote("Should scan for pet: No.  False exit does not have pet")
+    return false
+end
+
+
+-- Returns the room id of the false exit 
+function get_false_exit_room_id(roomid)
+    if(roomid == 5767) then
+        return 5766
+    elseif(roomid == 5775 or roomid == 5776 or roomid == 5787) then
+        return 5772
+    elseif(roomid == 5785) then
+        return 5766
+    elseif(roomid == 5789) then
+        return 5788
+    elseif(roomid == 5790) then
+        return 5769
+    elseif(roomid == 5793) then
+        return 5774
+    elseif(roomid == 5795) then
+        return 5779
+    elseif(roomid == 5796) then
+        return 5797
+    elseif(roomid == 5798) then
+        return 5775
+    elseif(roomid == 5800) then
+        return 5773
+    end
+    return -1
+end
+
+-- (Asynch Callback) The initiator is: scan_for_pet
+-- This is called after the scanning for the pet is complete
+function partroxis_scan_for_pet_complete()
+
+    -- We've looked at the exits,
+    -- We've scanned for pets,
+    -- Go ahead and find the correct exit and guide the player
+    next_dir = find_partroxis_exit(next_room_name)
+
+    guide_player(guide_name, next_dir)
+end
+
+
+tempScanTrigerPrefix = "tempPartTrigger_"
+
+-- (Asynch Initiator) The callback is:  partroxis_scan_for_pet_complete()
+-- Called when we need to perform the actual scanning
+function scan_for_pet()
+    PartroxisDebugNote("[enter]Scan for pets  ")
+
+    scan_complete_called = false
+    if (possible_valid_exits == nil or table.getn(possible_valid_exits) < 2) then
+        if (possible_valid_exits == nil) then
+            PartroxisDebugNote("Scan for pets called, possible exits is nil. Ignoring")
+        else
+            PartroxisDebugNote("Scan for pets called, but only "..table.getn(possible_valid_exits).." possible exits. Ignoring.")
+        end
+        scan_complete_called = true        --for completeness
+        partroxis_scan_for_pet_complete()
+        return
+    end
+
+    local have_valid_exit = false
+    for i,dir in pairs(possible_valid_exits) do
+
+        if (dir == nil) then
+            PartroxisDebugNote("NIL Direction Found in possible directions")
+        elseif (dir ~= "n" and dir ~= "s" and dir ~= "e" and dir ~= "w" and dir ~= "u" and dir ~= "d") then
+            PartroxisDebugNote("Invalid Direction Found in possible directions:  ".. dir)
+        else
+            
+            have_valid_exit = true
+            local full_dir = translate_exit_to_readable(dir)
+
+            -- Create the sequence of triggers
+            create_pet_scan_sequence(full_dir)
+
+            -- Then, fire off the scan in the correct direction, along with our echo.
+            Execute("scan "..dir)
+        end
+    end
+
+    Execute("echo .-.as")
+
+    
+    if (have_valid_exit == false) then
+         partroxis_scan_for_pet_complete()
+    end
+    
+    -- Implementation Note:
+    -- "pet_found_in_scanned_room()" will check if the "false exit" room has a pet
+    -- If so, it will add that direction to the "bad_dir" list.
+    -- Then do the auto-hunt. (eliminating the false exit)
+end
+
+
+-- Create the sequence of triggers for scanning in a given direction
+function create_pet_scan_sequence(full_dir)
+    local trigger_seq_name = tempScanTrigerPrefix..full_dir.."_"
+    local trigger_text = full_dir.." from here you see:"
+    
+    --For each direction, add five triggers:
+    --North from here you see:
+    --2 North from here you see:
+    --3 North from here you see:
+    --Nothing to see around here, might as well move on. (Note: timing hole. don't use this one
+    --a unique "echo" trigger to know that the scan is complete
+    
+    PartroxisDebugNote("Creating Scan Sequence ["..trigger_text.."]")
+
+    AddTriggerEx(trigger_seq_name.."1", trigger_text, "",  
+        trigger_flag.Enabled + trigger_flag.OneShot, 
+        -1, 0, "", "auto_scan_found_direction", sendto.script, 100)
+
+    AddTriggerEx(trigger_seq_name.."2", "2 "..trigger_text, "",  
+        trigger_flag.Enabled + trigger_flag.OneShot, 
+        -1, 0, "", "auto_scan_direction_complete", sendto.script, 100)
+    AddTriggerEx(trigger_seq_name.."3", "3 "..trigger_text, "",  
+        trigger_flag.Enabled + trigger_flag.OneShot, 
+        -1, 0, "", "auto_scan_direction_complete", sendto.script, 100)
+--    AddTriggerEx(trigger_seq_name.."4", "Nothing to see around here, might as well move on.", "",  
+--        trigger_flag.Enabled + trigger_flag.OneShot, 
+--        -1, 0, "", "auto_scan_direction_complete", sendto.script, 100)
+
+    -- We know this one will trigger (and delete itself).
+    AddTriggerEx(trigger_seq_name.."x", ".-.as", "",  
+        trigger_flag.Enabled + trigger_flag.OneShot + trigger_flag.OmitFromOutput + trigger_flag.KeepEvaluating, 
+        -1, 0, "", "auto_scan_matching_complete", sendto.script, 100)
+
+end
+
+function remove_pet_scan_sequence(callingTrigger)
+    -- ugh:single quotes to allow for doubles
+    DoAfterSpecial(0.1,'remove_pet_scan_sequence_async("'..callingTrigger..'")', sendto.script)
+end
+
+function remove_pet_scan_sequence_async(callingTrigger)
+    local name = string.sub(callingTrigger,1,string.len(callingTrigger)-1)
+    PartroxisDebugNote("Deleting Scan Sequence ["..name.."]")
+    DeleteTrigger(name.."1")
+    DeleteTrigger(name.."2")
+    DeleteTrigger(name.."3")
+    --DeleteTrigger(name.."4")
+    DeleteTrigger(name.."5")
+end
+
+
+function auto_scan_found_direction(rName, rLine, rWildcards)
+    local trigger_seq_name = string.sub(rName,1,string.len(rName)-1)
+
+    AddTriggerEx(trigger_seq_name.."5", "     - (Charmed) *", "",  
+        trigger_flag.Enabled + trigger_flag.OneShot, 
+        -1, 0, "", "pet_found_in_scanned_room", sendto.script, 100)
+end
+
+function auto_scan_direction_complete(rName, rLine, rWildcards)
+    remove_pet_scan_sequence(rName)
+end
+
+scan_complete_called = false
+function auto_scan_matching_complete(rName, rLine, rWildcards)
+    remove_pet_scan_sequence(rName)
+
+    -- Let's pray that these aren't actually asynchronous!!
+    -- Otherwise, we're going to have a juicy little timing hole right here:
+    if (scan_complete_called == true) then
+        return
+    end
+    scan_complete_called = true
+
+    partroxis_scan_for_pet_complete()
+end
+
+function pet_found_in_scanned_room(rName, rLine, rWildcards)
+    remove_pet_scan_sequence(rName)
+
+    -- The direction of the scan will be in the trigger:
+    local pref_len = string.len(tempScanTrigerPrefix)+1
+    local dir = string.lower(string.sub(rName, pref_len, pref_len))
+    local scanned_pet = rWildcards[1]
+    PartroxisDebugNote("Found Pet for direction ["..dir.."]  Pet: ["..scanned_pet.."]")
+
+    -- Sanity Check: make sure we have a false exit
+    local false_exit = get_false_exit_room_id(curr_room.id)
+    if (false_exit < 0) then
+        return
+    end
+
+    --@RLA OK... The bug here is this:
+
+    --  When we enter a room, we look at the mob's LONG description;
+        --A dust devil called icefall is sleeping here.
+    -- When we scan, we look at it's short description:
+        --A dust devil called icefall
+    -- So, we can't match the names
+
+    local false_exit_pet = rooms[false_exit].pet
+
+    -- If there is a pet in the "false exit" room, check if it's this same pet
+    -- If so, add this room as to the "wrong_dir" list
+    --if (false_exit_pet == scanned_pet) then
+
+    if (curr_room.temp_wrong_dir1 == "" or curr_room.temp_wrong_dir1 == dir) then
+        curr_room.temp_wrong_dir1 = dir
+    else
+        curr_room.temp_wrong_dir2 = dir
+    end
+    PartroxisDebugNote("DEBUG: PET SCAN FOUND! Setting CURR room["..curr_room.id.."]  t_wrong_dir1["
+          ..curr_room.temp_wrong_dir1.."]  t_wrongdir2["..curr_room.temp_wrong_dir2.."]")
+
+    --  Note: The scan_for_pet_complete() should call the guide/autorun stuff.  So, we just have to
+    --  set the bad direction and let everything else take its course
+end
+
 
 -------------------
 -- Partroxis Events
@@ -864,24 +1193,24 @@ last_direction = ""
 last_direction_prev = ""
 
 function partroxis_room_entered()
-	if (curr_room.id == nil) then
+    if (curr_room.id == nil) then
         --Not initialized?
         return
     end
 
     if (rooms == nil) then
-		rooms = {}
-	end
+        rooms = {}
+    end
 
     reset_curr_room_exits()
 
     if (curr_room.id == 5862) then
         partroxis_area_entered()
     end
-	if (curr_room.id == 5763) then
+    if (curr_room.id == 5763) then
         greet()
     end
-	if (curr_room.id == 5764) then
+    if (curr_room.id == 5764) then
         partroxis_maze_entered()
     end
 
@@ -902,15 +1231,18 @@ function partroxis_room_entered()
     end
 
     -- Ok:  We are in the maze and we moved around
+    -- Throw out a few triggers to look for pets
+    check_room_for_pet()
+
     -- Check our last movement and see if it was correct
-    check_correct_exit()
+    check_last_exit_correct()
 
     -- If this is already in our map, just reload it and call the correct exit function
     if (rooms[curr_room.id] ~= nil) then
         curr_room = rooms[curr_room.id]
 
         if (player_state == 3) then
-            DoAfterSpecial(0.2,"correct_exit()",12)
+            DoAfterSpecial(0.2,"execute_correct_exit()",12)
         end
         return
     end
@@ -924,13 +1256,14 @@ function partroxis_bad_move()
     if (curr_room.id <= 5763 or curr_room.id >= 5803) then
         return
     end
+
     -- if they're running, don't show this text.
     if (player_state > 8) then
         return
     end
    
     -- took a bad path.  Call this here.
-    -- Note: It will set isrunning which will prevent the guides from messing with us
+    -- Note: This call will set isrunning which will prevent the guides from messing with us
     if(auto_hunt == true) then
         AnsiNote("Auto-Hunt:   Wrong turn. speedwalking back to latest.")
         partroxis_return()
@@ -981,13 +1314,13 @@ function partroxis_maze_exited()
 
     clear_greetings_alias()
 
-    DoAfterSpecial(0.5,"clear_temporary_triggers()", sendto.script)
+    DoAfterSpecial(0.3,"clear_temporary_triggers()", sendto.script)
 
 end
 
 function partroxis_invis_reminder()
     local c_grey = ANSI(22)..ANSI(37)
-	local c_white = ANSI(1)..ANSI(37)
+    local c_white = ANSI(1)..ANSI(37)
     if (show_partroxis_help ~= true) then
         return
     end
@@ -1004,6 +1337,7 @@ function partroxis_invis_reminder()
             return
         end
 
+        --@RLA Note: auto_hunt will always be false because we cleared it due to fighting
         if (auto_hunt) then
             AnsiNote("")
             AnsiNote(c_white.."Attempting to reset your invis spells.")
@@ -1013,15 +1347,15 @@ function partroxis_invis_reminder()
 
         AnsiNote("")
         AnsiNote(c_grey.."Galaban whispers 'Don't forget to reset your invis spells.'")
-        correct_exit()
-		Execute("")
+        execute_correct_exit()
+        Execute("")
 
     end)
 
 end
 
 function partroxis_area_reset()
-	local c_white = ANSI(1)..ANSI(37)
+    local c_white = ANSI(1)..ANSI(37)
     AnsiNote(c_white.."+----------------------------------+")
     AnsiNote(c_white.."+-    The Partroxis has Reset     -+")
     AnsiNote(c_white.."+-  Cached rooms have been reset  -+")
@@ -1051,13 +1385,15 @@ function auto_exit()
 end
 
 function auto_exit_set_triggers()
-    SetTriggerOption("PartroxisExitTrigger1","omit_from_output","y")
-    SetTriggerOption("PartroxisExitTrigger2","omit_from_output","y")
-    SetTriggerOption("PartroxisExitTrigger3","omit_from_output","y")
-    SetTriggerOption("PartroxisExitTrigger4","omit_from_output","y")
-    SetTriggerOption("PartroxisExitTrigger5","omit_from_output","y")
-    SetTriggerOption("PartroxisExitTrigger6","omit_from_output","y")
-    SetTriggerOption("PartroxisExitTrigger7","omit_from_output","y")
+    if (partroxis_debug ~= true) then
+        SetTriggerOption("PartroxisExitTrigger1","omit_from_output","y")
+        SetTriggerOption("PartroxisExitTrigger2","omit_from_output","y")
+        SetTriggerOption("PartroxisExitTrigger3","omit_from_output","y")
+        SetTriggerOption("PartroxisExitTrigger4","omit_from_output","y")
+        SetTriggerOption("PartroxisExitTrigger5","omit_from_output","y")
+        SetTriggerOption("PartroxisExitTrigger6","omit_from_output","y")
+        SetTriggerOption("PartroxisExitTrigger7","omit_from_output","y")
+    end
 end
 
 function auto_exit_clear_triggers()
@@ -1071,25 +1407,28 @@ function auto_exit_clear_triggers()
 end
 
 function partroxis_exit_complete()
-   -- If we got an "exits" message, we know we're not running
-   isrunning = false
-   auto_exit_clear_triggers()
 
-   if(auto_hunt == true) then
-       -- store the last move we made and go make the next move.
-       last_direction_prev = last_direction
-       correct_exit()
+    -- If we got an "exits" message, we know we're not running
+    isrunning = false
+    auto_exit_clear_triggers()
 
+    if(auto_hunt == true) then
+        -- store the last move we made and go make the next move.
+        last_direction_prev = last_direction
+        execute_correct_exit()
+    
     else
-       correct_exit()
+        execute_correct_exit()
+        
+        last_direction_prev = last_direction
+        -- Now that we've processed the last direction, clear it out to avoid accidents
+        last_direction = ""
+    end
 
-       last_direction_prev = last_direction
-       -- Now that we've processed the last direction, clear it out to avoid accidents
-       last_direction = ""
-   end
 end
 
-function check_correct_exit()
+
+function check_last_exit_correct()
     -- If our last room isn't already stored and our last movement is correct
     -- store the room with the correct direction
 
@@ -1156,7 +1495,9 @@ function store_last_move()
     return false
 end
 
-function correct_exit()
+guide_name = "Galaban"
+next_room_name = ""
+function execute_correct_exit()
     local next_dir = "unknown"
 
     --Exits populated... let's look for the correct one
@@ -1175,7 +1516,7 @@ function correct_exit()
     -- make sure we can do this...
     if (curr_room == nil or curr_room.id < 5763 or curr_room.id > 5812 or 
         room_mob_list[curr_room.id] == nil) then
-	    Note("You're not in the Partroxis maze!  (room: "..curr_room.id..")")
+        Note("You're not in the Partroxis maze!  (room: "..curr_room.id..")")
         return
     end
 
@@ -1187,12 +1528,12 @@ function correct_exit()
     end
 
     if (next_room == nil) then
-	    AnsiNote("I couldn't find the next room  (room: "..(curr_room.id+1)..")")
+        AnsiNote("I couldn't find the next room  (room: "..(curr_room.id+1)..")")
         return
     end
 
-    local next_room_name = next_room.name
-    local this_mob_name = room_mob_list[curr_room.id].mob
+    next_room_name = next_room.name
+    guide_name = room_mob_list[curr_room.id].mob
 
     if (curr_room.id == 5763) then
         Note("Just head north to start")
@@ -1200,29 +1541,31 @@ function correct_exit()
     end
 
     -- Special rooms with gates rather than "exits"
-    if (curr_room.id == 5777) then
-        guide_player("Vision of a False Portal","ENTER GATE")
+    if (curr_room.id == 5777 or curr_room.id == 5792 or curr_room.id == 5803) then
+        guide_player(guide_name,"Enter Gate")
         last_direction = "enter gate"
-        return
-    elseif (curr_room.id == 5792) then
-        guide_player("Soul of the Damned","ENTER GATE")
-		last_direction = "enter gate"
-        return
-    elseif (curr_room.id == 5803) then
-        guide_player("Chitryn","ENTER GATE")
-		last_direction = "enter gate"
         return
     end 
 
     -- rooms with aggro mobs.  Have to use something else, since the mobs will be dead.
-	if (curr_room.id == 5784 or curr_room.id == 5798 or curr_room.id == 5799 or 
+    if (curr_room.id == 5784 or curr_room.id == 5798 or curr_room.id == 5799 or 
         curr_room.id == 5800 or curr_room.id == 5801) then
-        this_mob_name = "Galaban"
+        guide_name = "Galaban"
     end
 
+    -- Check for the next exit.  
+    -- (We need to do this before scanning so that we know which valid exits we have.
+    --  If we need to scan, we will process this again.)
     next_dir = find_partroxis_exit(next_room_name)
-    guide_player(this_mob_name,next_dir)
-    return
+
+    -- If we need to scan for a pet in this room, go ahead and make
+    -- the asynch callback (scan and wait for completion)
+    -- Otherwise, go ahead and deal with the data we have (guide the player)
+    if (should_scan_for_pet()) then
+        scan_for_pet()
+    else
+        guide_player(guide_name, next_dir)
+    end
 
 end
 
@@ -1237,7 +1580,7 @@ function guide_player(guidename,next_dir)
 end
 
 function auto_hunt_move(next_dir)
-	local c_white = ANSI(1)..ANSI(37)
+    local c_white = ANSI(1)..ANSI(37)
     if (auto_hunt == true) then
         if (curr_room.id == target_room_id) then
             auto_hunt_found_target()
@@ -1294,39 +1637,78 @@ function auto_hunt_set_off()
     auto_hunt = false
 end
 
-
+possible_valid_exits = {}
 function find_partroxis_exit(nextexit)
+    possible_valid_exits = {}
     if (curr_room.correct_dir ~= "") then
+        table.insert(possible_valid_exits, curr_room.correct_dir)
         return translate_exit_to_readable(curr_room.correct_dir)
+    end
+
+    -- This is very messy, but...
+    -- Make up a list of all know bad directions (.wrong_dir1) and possible bad directions (.temp_wrong_dir1)
+    -- The "temp" variables will be set by "scan" while the others will be set by *known* bad directions
+    local bad_dirs = {}
+    if (curr_room.temp_wrong_dir1 ~= "") then
+        table.insert(bad_dirs, curr_room.temp_wrong_dir1)
+    end
+    if (curr_room.temp_wrong_dir2 ~= "" and (arraycontains(bad_dirs,curr_room.temp_wrong_dir2) == false)) then
+        table.insert(bad_dirs, curr_room.temp_wrong_dir2)
+    end
+    if (curr_room.wrong_dir1 ~= "" and (arraycontains(bad_dirs, curr_room.wrong_dir1) == false)) then
+        table.insert(bad_dirs, curr_room.wrong_dir1)
+    end
+    if (curr_room.wrong_dir2 ~= "" and (arraycontains(bad_dirs, curr_room.wrong_dir2) == false)) then
+        table.insert(bad_dirs, curr_room.wrong_dir2)
+    end
+
+    --@RLA 
+    if (table.getn(bad_dirs) > 0) then
+        PartroxisDebugNote("[Find_exit] t_wr_dir1["..curr_room.temp_wrong_dir1.."]  t_wr_dir2["..curr_room.temp_wrong_dir2.."]"..
+                "wrong_dir1["..curr_room.wrong_dir1.."]   wrong_dir2["..curr_room.wrong_dir2.."]")
     end
 
     local out_string = ""
     if (curr_room.exits.n ~= nil and curr_room.exits.n == nextexit and
-        curr_room.wrong_dir1 ~= "n" and curr_room.wrong_dir2 ~= "n") then
-        out_string = append_with_or(out_string,"NORTH")
+        arraycontains(bad_dirs, "n") == false) then
+        out_string = append_with_or(out_string,"North")
+        table.insert(possible_valid_exits, "n")
     end
     if (curr_room.exits.e ~= nil and curr_room.exits.e == nextexit and
-        curr_room.wrong_dir1 ~= "e" and curr_room.wrong_dir2 ~= "e") then
-        out_string = append_with_or(out_string,"EAST")
+        arraycontains(bad_dirs, "e") == false) then
+        out_string = append_with_or(out_string,"East")
+        table.insert(possible_valid_exits, "e")
     end
     if (curr_room.exits.s ~= nil and curr_room.exits.s == nextexit and
-        curr_room.wrong_dir1 ~= "s" and curr_room.wrong_dir2 ~= "s") then
-        out_string = append_with_or(out_string,"SOUTH")
+        arraycontains(bad_dirs, "s") == false) then
+        out_string = append_with_or(out_string,"South")
+        table.insert(possible_valid_exits, "s")
     end
     if (curr_room.exits.w ~= nil and curr_room.exits.w == nextexit and
-        curr_room.wrong_dir1 ~= "w" and curr_room.wrong_dir2 ~= "w") then
-        out_string = append_with_or(out_string,"WEST")
+        arraycontains(bad_dirs, "w") == false) then
+        out_string = append_with_or(out_string,"West")
+        table.insert(possible_valid_exits, "w")
     end
     if (curr_room.exits.u ~= nil and curr_room.exits.u == nextexit and
-        curr_room.wrong_dir1 ~= "u" and curr_room.wrong_dir2 ~= "u") then
-        out_string = append_with_or(out_string,"UP")
+        arraycontains(bad_dirs, "u") == false) then
+        out_string = append_with_or(out_string,"Up")
+        table.insert(possible_valid_exits, "u")
     end
     if (curr_room.exits.d ~= nil and curr_room.exits.d == nextexit and
-        curr_room.wrong_dir1 ~= "d" and curr_room.wrong_dir2 ~= "d") then
-        out_string = append_with_or(out_string,"DOWN")
+        arraycontains(bad_dirs, "d") == false) then
+        out_string = append_with_or(out_string,"Down")
+        table.insert(possible_valid_exits, "d")
     end
 
     if (out_string == "") then
+        -- OK, if we scanned and got two pets in both valid directions, clear out the
+        -- temp directions and try again
+        if (curr_room.temp_wrong_dir1 ~= "") then
+            curr_room.temp_wrong_dir1 = ""
+            curr_room.temp_wrong_dir2 = ""
+            return find_partroxis_exit(nextexit)
+        end
+
         out_string = "to the void"
     end
 
@@ -1337,26 +1719,26 @@ end
 
 function translate_exit_to_readable(short_dir)
     if (short_dir == "n") then
-        return "NORTH"
+        return "North"
     elseif (short_dir == "s") then
-        return "SOUTH"
+        return "South"
     elseif (short_dir == "e") then
-        return "EAST"
+        return "East"
     elseif (short_dir == "w") then
-        return "WEST"
+        return "West"
     elseif (short_dir == "u") then
-        return "UP"
+        return "Up"
     elseif (short_dir == "d") then
-        return "DOWN"
+        return "Down"
     end
     return ""
 end
 
 function flavor_exit(mob_name, next_dir)
-   	local c_cyan = ANSI(1)..ANSI(36)
-	local c_red = ANSI(1)..ANSI(31)
-	local c_grey = ANSI(22)..ANSI(37)
-	local c_green = ANSI(1)..ANSI(32)
+       local c_cyan = ANSI(1)..ANSI(36)
+    local c_red = ANSI(1)..ANSI(31)
+    local c_grey = ANSI(22)..ANSI(37)
+    local c_green = ANSI(1)..ANSI(32)
 
     wait.make (function()
         wait.time(0.1)
@@ -1391,13 +1773,13 @@ end
 
 
 ------------------
---  Greeting stuff
+--  UI stuff
 ------------------
 function greet()
-	local c_cyan = ANSI(1)..ANSI(36)
-	local c_red = ANSI(1)..ANSI(31)
-	local c_grey = ANSI(22)..ANSI(37)
-	local c_green = ANSI(1)..ANSI(32)
+    local c_cyan = ANSI(1)..ANSI(36)
+    local c_red = ANSI(1)..ANSI(31)
+    local c_grey = ANSI(22)..ANSI(37)
+    local c_green = ANSI(1)..ANSI(32)
 
     if(show_greeting == false) then
         return
@@ -1429,7 +1811,7 @@ function greet()
         AnsiNote(c_cyan.."Galaban says 'Greetings.  Would you like assistance through the maze?'")
         AnsiNote(c_grey.."type '"..c_green.."accept"..c_grey.."' to ask for guides through the maze.")
         AnsiNote(c_grey.."type '"..c_red.."decline"..c_grey.."' to attempt without help.")
-		Execute("")
+        Execute("")
 
     end)
 
@@ -1449,9 +1831,9 @@ function enable_partroxis_guides(enabled)
 end
 
 function accept_partroxis_help()
-	local c_cyan = ANSI(1)..ANSI(36)
-	local c_grey = ANSI(22)..ANSI(37)
-	local c_red = ANSI(1)..ANSI(31)
+    local c_cyan = ANSI(1)..ANSI(36)
+    local c_grey = ANSI(22)..ANSI(37)
+    local c_red = ANSI(1)..ANSI(31)
 
     DoAfterSpecial(0.5,"clear_greetings_alias()", sendto.script)
     enable_partroxis_guides(true)
@@ -1463,23 +1845,23 @@ function accept_partroxis_help()
         AnsiNote(c_cyan.."Galaban says 'But do not fear.  They won't send you the wrong direction twice.'")
         AnsiNote(c_grey.."Galaban reaches into his pockets and throws lua dust over the maze.")
         AnsiNote(c_cyan.."Galaban says 'The first room is north.'")
-		Execute("open north")
+        Execute("open north")
 
         wait.time(0.5)
 
         AnsiNote("")
         AnsiNote(c_red.."A portal opens up and Galaban disappears into it.")
-		Execute("")
+        Execute("")
 
     end)
 
 end
 
 function decline_partroxis_help()
-	local c_cyan = ANSI(1)..ANSI(36)
-	local c_grey = ANSI(22)..ANSI(37)
-	local c_red = ANSI(1)..ANSI(31)
-	local c_green = ANSI(1)..ANSI(32)
+    local c_cyan = ANSI(1)..ANSI(36)
+    local c_grey = ANSI(22)..ANSI(37)
+    local c_red = ANSI(1)..ANSI(31)
+    local c_green = ANSI(1)..ANSI(32)
 
     DoAfterSpecial(0.5,"clear_greetings_alias()", sendto.script)
 
@@ -1497,11 +1879,17 @@ function decline_partroxis_help()
 
         AnsiNote("")
         AnsiNote(c_red.."A portal opens up and Galaban disappears into it.")
-		Execute("")
+        Execute("")
 
     end)
 
 
+end
+
+function partroxis_needs_nightvision()
+    local c_grey = ANSI(22)..ANSI(37)
+    local c_red = ANSI(1)..ANSI(31)
+    AnsiNote(c_grey.."Galaban whispers 'You need "..c_red.."night vision"..c_grey.." to navigate this maze.'.")
 end
 
 -----------------
@@ -1583,7 +1971,9 @@ end
 --------------------
 function tablelength(table)
   local count = 0
-  for _ in pairs(table) do count = count + 1 end
+  for _ in pairs(table) do 
+     count = count + 1 
+  end
   return count
 end
 
@@ -1626,6 +2016,18 @@ function padright(instr,tolength)
         strlen = strlen - 1
     end
     return instr
+end
+
+function arraycontains(arr, val)
+    if (arr == nil or table.getn(arr) < 1) then
+        return false
+    end
+    for ind,item in pairs(arr) do
+        if (val == item) then
+            return true
+        end
+    end
+    return false
 end
 
 
