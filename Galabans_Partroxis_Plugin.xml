@@ -908,6 +908,9 @@ end
 -- [Look evaluation]
 -- Add triggers to see if there is a pet in this room
 function check_room_for_pet()
+    if (isrunning == true) then
+        return
+    end
 
     -- These rooms are the "false exits" for later rooms.  Check them for pets
     if (curr_room.id == 5766 or curr_room.id == 5769  or curr_room.id == 5772
@@ -929,7 +932,7 @@ function check_room_for_pet()
          -1, 0, "", "partroxis_pet_match_complete", sendto.script, 100)
 
     -- just something unique to trigger the fact that we've looked through all the mobs in the room.
-    Execute("echo .-.1")
+    PartroxisDebugSend("echo .-.1")
 
 end
 
@@ -1052,7 +1055,7 @@ function scan_for_pet()
         end
     end
 
-    Execute("echo .-.as")
+    PartroxisDebugSend("echo .-.as")
 
     
     if (have_valid_exit == false) then
@@ -1266,6 +1269,7 @@ function partroxis_bad_move()
     -- Note: This call will set isrunning which will prevent the guides from messing with us
     if(auto_hunt == true) then
         AnsiNote("Auto-Hunt:   Wrong turn. speedwalking back to latest.")
+        PartroxisDebugNote("------------------------------------------------------")
         partroxis_return()
         return
     end
@@ -1380,7 +1384,7 @@ function auto_exit()
             end
         end
         auto_exit_set_triggers()
-        Execute("exits")
+        PartroxisDebugSend("exits")
     end
 end
 
@@ -1505,7 +1509,7 @@ function execute_correct_exit()
         initialize()
     end
 
-    if (isrunning) then
+    if (isrunning == true) then
         return
     end
     if (curr_room.id == 5763) then
@@ -1540,9 +1544,12 @@ function execute_correct_exit()
         return
     end
 
+    --@RLA -- current bug --    
+        --  Can no longer auto-hunt through gates (?!?)
+        -- Autohunt dream eater
     -- Special rooms with gates rather than "exits"
     if (curr_room.id == 5777 or curr_room.id == 5792 or curr_room.id == 5803) then
-        guide_player(guide_name,"Enter Gate")
+        guide_player(guide_name,translate_exit_to_readable("enter gate"))
         last_direction = "enter gate"
         return
     end 
@@ -1607,14 +1614,17 @@ function auto_hunt_move(next_dir)
         end
         --perform the auto-hunt
         local exec_mov = next_dir
-        if (next_dir == "ENTER GATE") then
+        if (next_dir == translate_exit_to_readable("enter gate")) then
             exec_mov = "enter gate"
         else
             --grab the first direction and go with it
             local short_dir = string.lower(string.sub(next_dir,1,1))
             exec_mov = short_dir
         end
-        Note("Auto-Hunt:  "..exec_mov)
+
+        PartroxisDebugNote("Auto-Hunt:  "..exec_mov)
+
+        -- Make sure to "Execute" so we get the aliases
         Execute(exec_mov)
     end
 end
@@ -1671,32 +1681,32 @@ function find_partroxis_exit(nextexit)
     local out_string = ""
     if (curr_room.exits.n ~= nil and curr_room.exits.n == nextexit and
         arraycontains(bad_dirs, "n") == false) then
-        out_string = append_with_or(out_string,"North")
+        out_string = append_with_or(out_string,translate_exit_to_readable("n"))
         table.insert(possible_valid_exits, "n")
     end
     if (curr_room.exits.e ~= nil and curr_room.exits.e == nextexit and
         arraycontains(bad_dirs, "e") == false) then
-        out_string = append_with_or(out_string,"East")
+        out_string = append_with_or(out_string,translate_exit_to_readable("e"))
         table.insert(possible_valid_exits, "e")
     end
     if (curr_room.exits.s ~= nil and curr_room.exits.s == nextexit and
         arraycontains(bad_dirs, "s") == false) then
-        out_string = append_with_or(out_string,"South")
+        out_string = append_with_or(out_string,translate_exit_to_readable("s"))
         table.insert(possible_valid_exits, "s")
     end
     if (curr_room.exits.w ~= nil and curr_room.exits.w == nextexit and
         arraycontains(bad_dirs, "w") == false) then
-        out_string = append_with_or(out_string,"West")
+        out_string = append_with_or(out_string,translate_exit_to_readable("w"))
         table.insert(possible_valid_exits, "w")
     end
     if (curr_room.exits.u ~= nil and curr_room.exits.u == nextexit and
         arraycontains(bad_dirs, "u") == false) then
-        out_string = append_with_or(out_string,"Up")
+        out_string = append_with_or(out_string,translate_exit_to_readable("u"))
         table.insert(possible_valid_exits, "u")
     end
     if (curr_room.exits.d ~= nil and curr_room.exits.d == nextexit and
         arraycontains(bad_dirs, "d") == false) then
-        out_string = append_with_or(out_string,"Down")
+        out_string = append_with_or(out_string,translate_exit_to_readable("d"))
         table.insert(possible_valid_exits, "d")
     end
 
@@ -1730,6 +1740,8 @@ function translate_exit_to_readable(short_dir)
         return "Up"
     elseif (short_dir == "d") then
         return "Down"
+    elseif (short_dir == "enter gate") then
+        return "Enter Gate"
     end
     return ""
 end
@@ -1994,6 +2006,14 @@ end
 function PartroxisDebugNote(text)
     if (partroxis_debug == true) then
         Note(text)
+    end
+end
+
+function PartroxisDebugSend(cmd)
+    if(partroxis_debug) then
+        Send(cmd)
+    else
+        SendNoEcho(cmd)
     end
 end
 
