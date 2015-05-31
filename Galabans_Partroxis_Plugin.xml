@@ -75,7 +75,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
 
 <alias
    match="partroxis autohunt *"
-   enabled="y"
+   enabled="n"
    script="partroxis_mob_hunt"
    sequence="100">
 </alias>
@@ -89,7 +89,7 @@ Also, an autohunt feature allows you to go directly to a mob within the maze.
 
 <alias
    match="partroxis runto *"
-   enabled="y"
+   enabled="n"
    send_to="12"
    sequence="100">
   <send>
@@ -519,7 +519,8 @@ function partroxis_mob_stophunt()
         auto_hunt_set_off()
         Note("Turning off Auto-hunt")
     else
-        AnsiNote(c_grey.."To auto-hunt a mob in the partroxis maze use: "..c_green.."partroxis autohunt mob")
+        AnsiNote(c_grey.."The imms have made it clear that a plugin that runs directly to a room is considered 'botting'.")
+        AnsiNote(c_grey.."Auto-hunt is disabled.")
     end
 end
 
@@ -531,7 +532,8 @@ function partroxis_room_stophunt()
         auto_hunt_set_off()
         Note("Turning off runto")
     else
-        AnsiNote(c_grey.."To runto a room in the partroxis maze use: "..c_green.."partroxis runto roomid")
+        AnsiNote(c_grey.."The imms have made it clear that a plugin that runs directly to a room is considered 'botting'.")
+        AnsiNote(c_grey.."Runto is disabled.")
     end
 end
 
@@ -670,7 +672,7 @@ function partroxis_off()
     AnsiNote(c_grey.."Partroxis plugin disabled")
 
     -- autohunt
-    partroxis_mob_stophunt()
+    auto_hunt_set_off()
 
     -- guides
     enable_partroxis_guides(false)    
@@ -700,14 +702,12 @@ Re-enter the area or use "partroxis guide" to turn the guides on.
 Commands available:
 
 partroxis help           -- this help screen
-partroxis autohunt <mob> -- run to the mob within the maze
-partroxis runto <room #> -- run to the room number within the maze
 partroxis guide          -- Enable the maze guides
-partroxis return         -- return to the last explored room in the maze
 
 partroxis listdata       -- print out a list of the room/mob data
 partroxis reset          -- reset the internal cache.
-partroxis off            -- blanket disable for all plugin functionality]]
+partroxis off            -- blanket disable for all plugin functionality
+]]
 
     print(outstr)
 
@@ -1161,13 +1161,13 @@ function pet_found_in_scanned_room(rName, rLine, rWildcards)
         return
     end
 
-    --@RLA OK... The bug here is this:
 
     --  When we enter a room, we look at the mob's LONG description;
         --A dust devil called icefall is sleeping here.
     -- When we scan, we look at it's short description:
         --A dust devil called icefall
     -- So, we can't match the names
+    -- Add the direction to the "temporary" wrong direction so taht we'll try a different direction first.
 
     local false_exit_pet = rooms[false_exit].pet
 
@@ -1341,7 +1341,7 @@ function partroxis_invis_reminder()
             return
         end
 
-        --@RLA Note: auto_hunt will always be false because we cleared it due to fighting
+        -- Note: auto_hunt will always be false because we cleared it due to fighting
         if (auto_hunt) then
             AnsiNote("")
             AnsiNote(c_white.."Attempting to reset your invis spells.")
@@ -1544,9 +1544,6 @@ function execute_correct_exit()
         return
     end
 
-    --@RLA -- current bug --    
-        --  Can no longer auto-hunt through gates (?!?)
-        -- Autohunt dream eater
     -- Special rooms with gates rather than "exits"
     if (curr_room.id == 5777 or curr_room.id == 5792 or curr_room.id == 5803) then
         guide_player(guide_name,translate_exit_to_readable("enter gate"))
@@ -1672,7 +1669,6 @@ function find_partroxis_exit(nextexit)
         table.insert(bad_dirs, curr_room.wrong_dir2)
     end
 
-    --@RLA 
     if (table.getn(bad_dirs) > 0) then
         PartroxisDebugNote("[Find_exit] t_wr_dir1["..curr_room.temp_wrong_dir1.."]  t_wr_dir2["..curr_room.temp_wrong_dir2.."]"..
                 "wrong_dir1["..curr_room.wrong_dir1.."]   wrong_dir2["..curr_room.wrong_dir2.."]")
