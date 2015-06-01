@@ -1240,14 +1240,17 @@ function partroxis_room_entered()
     -- Check our last movement and see if it was correct
     check_last_exit_correct()
 
-    -- If this is already in our map, just reload it and call the correct exit function
+    -- If this is already in our map, just reload it and then call the "execute" function
     if (rooms[curr_room.id] ~= nil) then
         curr_room = rooms[curr_room.id]
 
-        if (player_state == 3) then
-            DoAfterSpecial(0.2,"execute_correct_exit()",12)
+        if (curr_room.correct_dir ~= "") then
+            if (player_state == 3) then
+                DoAfterSpecial(0.2,"execute_correct_exit()",12)
+            end
+            return
         end
-        return
+        PartroxisDebugNote("Loaded room from map with no correct direction. Calling Auto-exits")
     end
 
     auto_exit()
@@ -1282,7 +1285,11 @@ function partroxis_bad_move()
 
         AnsiNote(c_grey.."Galaban whispers 'It looks like you got offtrack somewhere.'")
         if (tablelength(rooms) > 2) then
-            AnsiNote(c_grey.."Galaban whispers 'You can follow the guides back or use "..c_green.."partroxis return"..c_grey.." to backtrack.'")
+            ColourTell("gray", "black", "Galaban whispers 'You can follow the guides back or use ")
+            Hyperlink("partroxis return", "[partroxis return]","Click to move","green","black",0)
+            ColourTell("gray", "black", " to backtrack")
+            AnsiNote("")
+
             AnsiNote(c_grey.."Galaban whispers 'It will put you back where you were.'")
         end
         AnsiNote(c_grey.."Galaban whispers 'Don't worry.  That guide won't give the same bad advice.'")
@@ -1291,6 +1298,7 @@ function partroxis_bad_move()
 
 
 end
+
 
 function partroxis_area_entered()
     show_greeting = true
@@ -1350,7 +1358,13 @@ function partroxis_invis_reminder()
         end
 
         AnsiNote("")
-        AnsiNote(c_grey.."Galaban whispers 'Don't forget to reset your invis spells.'")
+
+        ColourTell("gray", "black", "Galaban whispers 'Don't forget to ")
+        Hyperlink("c invis;hide;sneak", "[reset your invis spells]","Click to cast","green","black",0)
+        ColourTell("gray", "black", ".'")
+        AnsiNote("")
+
+
         execute_correct_exit()
         Execute("")
 
@@ -1546,16 +1560,18 @@ function execute_correct_exit()
 
     -- Special rooms with gates rather than "exits"
     if (curr_room.id == 5777 or curr_room.id == 5792 or curr_room.id == 5803) then
+        possible_valid_exits = {}
+        table.insert(possible_valid_exits, "enter gate")
         guide_player(guide_name,translate_exit_to_readable("enter gate"))
         last_direction = "enter gate"
         return
     end 
 
-    -- rooms with aggro mobs.  Have to use something else, since the mobs will be dead.
-    if (curr_room.id == 5784 or curr_room.id == 5798 or curr_room.id == 5799 or 
-        curr_room.id == 5800 or curr_room.id == 5801) then
-        guide_name = "Galaban"
-    end
+    --"flavor_text" used to say "xx points yy". I used to force
+    --if (curr_room.id == 5784 or curr_room.id == 5798 or curr_room.id == 5799 or 
+    --    curr_room.id == 5800 or curr_room.id == 5801) then
+    --    guide_name = "Galaban"
+    --end
 
     -- Check for the next exit.  
     -- (We need to do this before scanning so that we know which valid exits we have.
@@ -1750,7 +1766,22 @@ function flavor_exit(mob_name, next_dir)
 
     wait.make (function()
         wait.time(0.1)
-        AnsiNote(c_grey..mob_name.." points "..c_green..next_dir)
+
+        ColourNote("gray", "black", padright("Mob here:", 40).. "Correct Exit")
+        ColourTell("gray", "black", padright(mob_name,40))
+
+        for i,dir in pairs(possible_valid_exits) do
+            if(i > 1) then
+                ColourTell("gray", "black", " or ")
+            end
+
+            local full_dir = "["..translate_exit_to_readable(dir).."]"
+
+            Hyperlink(dir, full_dir,"Click to move","green","black",0)
+
+        end
+
+        AnsiNote("")
         AnsiNote("")
     end)
 end
