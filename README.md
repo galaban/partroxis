@@ -14,9 +14,10 @@ Re-enter the area or use "partroxis guide" to turn the guides on.
 
 Commands available:
 * partroxis help           -- this help screen
-* partroxis guide          -- Enable the maze guides
+* partroxis guide          -- Enable/Disable the maze guides
 * partroxis return         -- return to the last explored room in the maze
-* partroxis reset          -- reset the internal cache.
+* partroxis reset          -- reset the internal cache
+* partroxis off            -- A blank "off" button
 
 ## To install
 1. Download the raw file from github:
